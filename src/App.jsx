@@ -41,7 +41,7 @@ async function callClaude(imageBase64, mediaType) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       system: STORY_SYSTEM,
       messages: [{
@@ -70,7 +70,7 @@ async function generateIllustration(prompt, pageIndex) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 1000,
       messages: [{
         role: "user",
@@ -288,7 +288,8 @@ export default function ScribbleMagic() {
           .catch(() => setIllustrations(prev => ({ ...prev, [i]: "error" })));
       });
     } catch (e) {
-      setError("Couldn't read the story. Make sure the photo is well-lit and try again!");
+      console.error("Storybook error:", e);
+      setError(`Error: ${e.message}`);
       setScreen("home");
     }
   };
