@@ -1,5 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
-
 export const config = {
   api: {
     bodyParser: {
@@ -19,16 +17,22 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: { message: "ANTHROPIC_API_KEY not configured on server" } });
   }
 
-  console.log("Calling Anthropic with model:", req.body?.model);
-
-  const client = new Anthropic({ apiKey });
-
   try {
-    const response = await client.messages.create(req.body);
-    console.log("Anthropic response OK, stop_reason:", response.stop_reason);
-    res.status(200).json(response);
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(req.body),
+    });
+
+    const data = await response.json();
+    console.log("Anthropic status:", response.status);
+    res.status(response.status).json(data);
   } catch (err) {
-    console.error("Anthropic API error:", err.status, err.message);
-    res.status(err.status || 500).json({ error: { message: err.message } });
+    console.error("Fetch error:", err.message);
+    res.status(500).json({ error: { message: err.message } });
   }
 }
