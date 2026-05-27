@@ -62,38 +62,39 @@ async function callClaude(imageBase64, mediaType) {
 
 async function generateIllustration(prompt, pageIndex) {
   const colors = [
-    "deep purples and gold", "soft pinks and sky blue", "emerald greens and amber",
-    "midnight blue and silver", "coral and lavender", "teal and rose gold"
+    ["#6C3FD4","#FFD700"], ["#FF6B9D","#87CEEB"], ["#2d8a4e","#f4a62a"],
+    ["#1a3a6b","#c0c0c0"], ["#c45c8a","#9B72EF"], ["#1a8a8a","#f4a0a0"]
   ];
-  const palette = colors[pageIndex % colors.length];
+  const [c1, c2] = colors[pageIndex % colors.length];
   const res = await fetch("/api/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
-      max_tokens: 1000,
+      max_tokens: 2048,
       messages: [{
         role: "user",
-        content: `Create a beautiful children's storybook SVG illustration for this scene: ${prompt}
+        content: `Draw a simple children's storybook illustration as SVG for: ${prompt}
 
-Color palette: ${palette}. Style: whimsical watercolor, soft gradients, dreamy atmosphere.
+Use colors ${c1} and ${c2}. Keep it simple and charming.
 
-Create a detailed SVG (viewBox="0 0 400 300") with:
-- A rich layered background (sky, ground, environment)
-- Main characters or objects from the scene
-- Decorative magical elements (stars, sparkles, flowers, clouds)
-- Soft gradient fills and overlapping semi-transparent shapes for depth
-- Warm, joyful, child-friendly aesthetic
-- Multiple layers of detail
+Rules:
+- viewBox="0 0 400 300"
+- Simple shapes only (circles, rects, ellipses, paths)
+- A background, 1-2 main characters/objects, a few decorative stars or dots
+- NO text elements
+- Keep total SVG under 100 lines
 
-Respond ONLY with raw SVG starting <svg and ending </svg>. No explanation.`
+Reply with ONLY the SVG. Start with <svg and end with </svg>.`
       }]
     })
   });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
   const raw = data.content.map(b => b.text || "").join("");
-  const match = raw.match(/<svg[\s\S]*<\/svg>/i);
+  console.log("Illustration raw response (first 300 chars):", raw.substring(0, 300));
+  const match = raw.match(/<svg[\s\S]*?<\/svg>/i);
+  console.log("SVG match found:", !!match);
   return match ? match[0] : null;
 }
 
