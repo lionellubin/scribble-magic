@@ -35,7 +35,34 @@ Respond ONLY with valid JSON, no markdown fences:
   ]
 }`;
 
+// ─── IMAGE COMPRESSION ────────────────────────────────────────────────────────
+function compressImage(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1568;
+      let { width, height } = img;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+        else { width = Math.round(width * MAX / height); height = MAX; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1]);
+    };
+    img.src = dataUrl;
+  });
+}
+
 // ─── API HELPERS ──────────────────────────────────────────────────────────────
+async function safeJson(res) {
+  const text = await res.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error(`Server error (${res.status}): ${text.substring(0, 120)}`); }
+}
+
 async function callClaude(imageBase64, mediaType) {
   const res = await fetch("/api/messages", {
     method: "POST",
@@ -47,13 +74,13 @@ async function callClaude(imageBase64, mediaType) {
       messages: [{
         role: "user",
         content: [
-          { type: "image", source: { type: "base64", media_type: mediaType, data: imageBase64 } },
+          { type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageBase64 } },
           { type: "text", text: "Create a storybook from this child's handwritten story." }
         ]
       }]
     })
   });
-  const data = await res.json();
+  const data = await safeJson(res);
   if (data.error) throw new Error(data.error.message);
   const raw = data.content.map(b => b.text || "").join("");
   const clean = raw.replace(/```json|```/g, "").trim();
@@ -89,10 +116,9 @@ Reply with ONLY the SVG. Start with <svg and end with </svg>.`
       }]
     })
   });
-  const data = await res.json();
+  const data = await safeJson(res);
   if (data.error) throw new Error(data.error.message);
   const raw = data.content.map(b => b.text || "").join("");
-  console.log("Illustration raw response (first 300 chars):", raw.substring(0, 300));
   const match = raw.match(/<svg[\s\S]*?<\/svg>/i);
   console.log("SVG match found:", !!match);
   return match ? match[0] : null;
@@ -263,9 +289,11 @@ export default function ScribbleMagic() {
     const reader = new FileReader();
     reader.onload = (e) => {
       setImage(e.target.result);
-      setImageBase64(e.target.result.split(",")[1]);
-      setImageMediaType(file.type || "image/jpeg");
       setError(null);
+      compressImage(e.target.result).then((base64) => {
+        setImageBase64(base64);
+        setImageMediaType("image/jpeg");
+      });
     };
     reader.readAsDataURL(file);
   }, []);
