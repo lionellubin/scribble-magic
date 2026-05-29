@@ -181,6 +181,12 @@ function IllustrationPanel({ svgContent, isLoading, pageIndex }) {
     "linear-gradient(135deg,#0d2818,#1a4a2e)", "linear-gradient(135deg,#1a0a0a,#3d1515)",
     "linear-gradient(135deg,#1a1528,#2a2050)", "linear-gradient(135deg,#0a1a1a,#0d3333)",
   ];
+
+  // Convert SVG to base64 data URL — works reliably on iOS Safari unlike dangerouslySetInnerHTML
+  const svgDataUrl = svgContent && svgContent !== "error"
+    ? `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgContent)))}`
+    : null;
+
   return (
     <div style={{
       background: gradients[pageIndex % gradients.length],
@@ -200,9 +206,12 @@ function IllustrationPanel({ svgContent, isLoading, pageIndex }) {
           <div style={{ fontSize: "40px", animation: "spin 1.5s linear infinite", display: "inline-block" }}>🎨</div>
           <p style={{ fontFamily: "'Quicksand',sans-serif", fontSize: "13px", color: BRAND.textMuted, margin: "10px 0 0" }}>Painting your illustration...</p>
         </div>
-      ) : svgContent && svgContent !== "error" ? (
-        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
-          dangerouslySetInnerHTML={{ __html: svgContent }} />
+      ) : svgDataUrl ? (
+        <img
+          src={svgDataUrl}
+          alt="Story illustration"
+          style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
       ) : (
         <div style={{ textAlign: "center", opacity: 0.5 }}>
           <div style={{ fontSize: "52px" }}>🌟</div>
