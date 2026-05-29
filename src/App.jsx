@@ -370,16 +370,24 @@ export default function ScribbleMagic() {
   const handleDownloadPDF = () => {
     const pages = storyData?.pages || [];
 
+    const escHtml = (s) => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+
+    const svgToDataUrl = (svg) => {
+      try { return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}`; }
+      catch { return null; }
+    };
+
     const pageHtml = pages.map((p, i) => {
       const svg = illustrations[i];
       const hasSvg = svg && svg !== "loading" && svg !== "error";
-      const imgTag = hasSvg
-        ? `<img class="page-img" src="data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svg)))}" alt="illustration" />`
+      const dataUrl = hasSvg ? svgToDataUrl(svg) : null;
+      const imgTag = dataUrl
+        ? `<img class="page-img" src="${dataUrl}" alt="illustration" />`
         : `<div class="page-img-placeholder">✨</div>`;
       return `<div class="page">
   <div class="page-num">Page ${i + 1} of ${pages.length}</div>
   ${imgTag}
-  <div class="page-text">${p.text}</div>
+  <div class="page-text">${escHtml(p.text)}</div>
 </div>`;
     }).join("");
 
@@ -419,10 +427,22 @@ ${pageHtml}
   <div class="logo">🪄 Scribble Magic</div>
 </div>
 </body></html>`;
-    const win = window.open("", "_blank");
-    win.document.write(html);
-    win.document.close();
-    setTimeout(() => win.print(), 1200);
+    // Use Blob URL — avoids document.write truncation for large HTML with base64 images
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+    const blobUrl = URL.createObjectURL(blob);
+    const win = window.open(blobUrl, "_blank");
+    if (win) {
+      win.onload = () => { setTimeout(() => { win.print(); URL.revokeObjectURL(blobUrl); }, 500); };
+    } else {
+      // Popup blocked — offer direct download instead
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `${storyData?.title || "Storybook"}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    }
   };
 
   const resetApp = () => {
